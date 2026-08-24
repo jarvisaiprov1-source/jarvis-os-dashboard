@@ -132,13 +132,108 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+@theme {
+  --font-mono:
+    "JetBrains Mono", "Consolas", "Courier New", ui-monospace, monospace;
+  --color-hud-cyan: oklch(0.86 0.16 178);
+  --color-hud-blue: oklch(0.75 0.14 235);
+  --color-hud-green: oklch(0.83 0.2 148);
+  --color-hud-grid: oklch(0.86 0.16 178 / 12%);
+}
+
+:root {
+  --background: oklch(0.16 0.02 264);
+  --foreground: oklch(0.95 0.02 200);
+  --card: oklch(0.19 0.025 258);
+  --card-foreground: oklch(0.95 0.02 200);
+  --popover: oklch(0.19 0.025 258);
+  --popover-foreground: oklch(0.95 0.02 200);
+  --primary: oklch(0.86 0.16 178);
+  --primary-foreground: oklch(0.16 0.02 264);
+  --secondary: oklch(0.26 0.04 250);
+  --secondary-foreground: oklch(0.95 0.02 200);
+  --muted: oklch(0.26 0.04 250);
+  --muted-foreground: oklch(0.7 0.05 220);
+  --accent: oklch(0.75 0.14 235);
+  --accent-foreground: oklch(0.16 0.02 264);
+  --border: oklch(0.86 0.16 178 / 25%);
+  --input: oklch(0.86 0.16 178 / 20%);
+  --ring: oklch(0.86 0.16 178);
+  --radius: 0.25rem;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
   body {
-    background-color: var(--color-background);
+    background-color: #030712;
     color: var(--color-foreground);
+    font-family: var(--font-mono);
+    background-image:
+      linear-gradient(var(--color-hud-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-hud-grid) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 }
+
+@utility hud-panel {
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, #030712 88%, var(--color-hud-blue) 12%);
+  box-shadow:
+    0 0 24px -8px var(--color-hud-cyan),
+    inset 0 0 40px -30px var(--color-hud-cyan);
+  backdrop-filter: blur(2px);
+}
+
+@utility hud-glow {
+  text-shadow: 0 0 10px color-mix(in oklab, var(--color-hud-cyan) 60%, transparent);
+}
+
+@utility scanlines {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 3px,
+      color-mix(in oklab, var(--color-hud-cyan) 5%, transparent) 3px 4px
+    );
+  }
+}
+
+@keyframes hud-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes hud-spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes hud-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+@keyframes hud-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
