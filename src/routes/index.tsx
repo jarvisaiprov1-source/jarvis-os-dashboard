@@ -1,62 +1,57 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Send, Square } from "lucide-react";
+import { ChevronDown, Lock, MonitorUp, ShieldOff, Unlock } from "lucide-react";
 
-import { ArcReactor } from "@/components/ArcReactor";
-import { MetricBar } from "@/components/MetricBar";
+import { BottomInputBar } from "@/components/nexus/BottomInputBar";
+import { NAV_ITEMS, Sidebar, type NavKey } from "@/components/nexus/Sidebar";
+import { TelemetryCard } from "@/components/nexus/TelemetryCard";
+import { TerminalScreen, type LogKind, type LogLine } from "@/components/nexus/TerminalScreen";
 import { askJarvis } from "@/lib/jarvis.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "J.A.R.V.I.S. Mark LXXXV OS // Stark Industries HUD" },
+      { title: "J.A.R.V.I.S. MARK-XXIII // Claude-Primary Autonomous Nexus" },
       {
         name: "description",
         content:
-          "A tactical Stark Industries heads-up display with a live Arc Reactor core, system telemetry, and a voice-enabled J.A.R.V.I.S. command terminal.",
+          "A sci-fi AI command center: 6-brain vector routing, neural terminal, hands-free voice nexus, live telemetry and a security sandbox audit console.",
       },
-      { property: "og:title", content: "J.A.R.V.I.S. Mark LXXXV OS" },
+      { property: "og:title", content: "J.A.R.V.I.S. MARK-XXIII Autonomous Nexus" },
       {
         property: "og:description",
         content:
-          "Talk to J.A.R.V.I.S. inside a glowing Stark Industries HUD with live telemetry and voice commands.",
+          "Command an autonomous AI nexus with Claude-primary brain routing, live telemetry and hands-free voice control.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Hud,
+  component: Nexus,
 });
 
-type Msg = { role: "user" | "assistant"; content: string };
+const MODELS = [
+  "Claude 3.5 Sonnet",
+  "Groq Llama-3.3 70B",
+  "OpenAI GPT-5.4",
+  "Mistral Large",
+  "DeepSeek V3",
+  "Local Nexus 8B",
+];
 
-function useClock() {
-  const [now, setNow] = useState<string>("--:--:--");
-  useEffect(() => {
-    const tick = () => setNow(new Date().toISOString().slice(11, 19));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
+const AMBIENT: { kind: LogKind; text: string }[] = [
+  { kind: "scan", text: "SECURITY: Running zero-day malware sweep across memory vectors..." },
+  { kind: "system", text: "Assembling parametric 3D CAD model // tolerance 0.02mm" },
+  { kind: "success", text: "TELEMETRY: Claude context optimization complete" },
+  { kind: "system", text: "Vector table re-index across 6 brains // 1.2M embeddings" },
+  { kind: "scan", text: "Sandbox intercepted 3 untrusted syscalls — quarantined" },
+  { kind: "success", text: "Discord + Telegram relay heartbeat acknowledged" },
+  { kind: "system", text: "Enterprise suite: 617 automations idle and armed" },
+];
 
-function useMetrics() {
-  const [cpu, setCpu] = useState(5.2);
-  const [ram, setRam] = useState(78.7);
-  const [pwr, setPwr] = useState(92.4);
-  useEffect(() => {
-    const id = setInterval(() => {
-      const jitter = (v: number, amt: number, lo: number, hi: number) =>
-        Math.min(hi, Math.max(lo, v + (Math.random() - 0.5) * amt));
-      setCpu((v) => jitter(v, 4, 1.2, 42));
-      setRam((v) => jitter(v, 2.2, 61, 93));
-      setPwr((v) => jitter(v, 1.4, 78, 100));
-    }, 1600);
-    return () => clearInterval(id);
-  }, []);
-  return { cpu, ram, pwr };
+function stamp() {
+  return new Date().toISOString().slice(11, 19);
 }
 
 function speak(text: string) {
@@ -73,70 +68,125 @@ function speak(text: string) {
   window.speechSynthesis.speak(u);
 }
 
-function Hud() {
-  const clock = useClock();
-  const { cpu, ram, pwr } = useMetrics();
+function Nexus() {
   const send = useServerFn(askJarvis);
 
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        "Systems online, sir. Mark LXXXV shell initialised, all subroutines nominal. Try not to break anything expensive this time.",
-    },
-  ]);
+  const [view, setView] = useState<NavKey>("hub");
+  const [clock, setClock] = useState("--:--:--");
+  const [model, setModel] = useState(MODELS[0]!);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [lockdown, setLockdown] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [listening, setListening] = useState(false);
-  const logRef = useRef<HTMLDivElement>(null);
-  const recogRef = useRef<any>(null);
+  const [metrics, setMetrics] = useState({ cpu: 12.4, ctx: 68.2, vec: 91.5 });
+
+  const idRef = useRef(0);
+  const recogRef = useRef<{ stop: () => void } | null>(null);
+  const [lines, setLines] = useState<LogLine[]>(() => [
+    {
+      id: 0,
+      kind: "system",
+      text: "MARK-XXIII shell booted // Claude-Primary brain router online.",
+      ts: stamp(),
+    },
+    {
+      id: 1,
+      kind: "success",
+      text: "6-brain vector sync established. Awaiting directives, sir.",
+      ts: stamp(),
+    },
+  ]);
+
+  const push = useCallback((kind: LogKind, text: string) => {
+    idRef.current += 1;
+    setLines((prev) => [...prev.slice(-200), { id: 1000 + idRef.current, kind, text, ts: stamp() }]);
+  }, []);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, busy]);
+    const tick = () => setClock(new Date().toISOString().slice(11, 19));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const jitter = (v: number, amt: number, lo: number, hi: number) =>
+        Math.min(hi, Math.max(lo, v + (Math.random() - 0.5) * amt));
+      setMetrics((m) => ({
+        cpu: jitter(m.cpu, 6, 3, 62),
+        ctx: jitter(m.ctx, 4, 40, 99),
+        vec: jitter(m.vec, 2, 82, 100),
+      }));
+    }, 1800);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const entry = AMBIENT[Math.floor(Math.random() * AMBIENT.length)]!;
+      push(entry.kind, entry.text);
+    }, 7000);
+    return () => clearInterval(id);
+  }, [push]);
 
   const transmit = useCallback(
     async (raw: string) => {
       const text = raw.trim();
       if (!text || busy) return;
-      const next: Msg[] = [...messages, { role: "user", content: text }];
-      setMessages(next);
       setInput("");
       setBusy(true);
+      setScanning(true);
+      push("user", text);
+      push("scan", `Routing directive through ${model} // auxiliary fallbacks warm.`);
+
+      const history = lines
+        .filter((l) => l.kind === "user" || l.kind === "ai")
+        .slice(-18)
+        .map((l) => ({ role: l.kind === "user" ? ("user" as const) : ("assistant" as const), content: l.text }));
+
       try {
-        const res = await send({ data: { messages: next.slice(-20) } });
-        setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
+        const res = await send({ data: { messages: [...history, { role: "user", content: text }] } });
+        setScanning(false);
+        push("success", "Model Context Protocol resolved // primary brain returned payload.");
+        push("ai", res.reply);
         speak(res.reply);
       } catch {
-        setMessages((m) => [
-          ...m,
-          {
-            role: "assistant",
-            content: "Uplink failure, sir. The comms relay declined my request. Try again shortly.",
-          },
-        ]);
+        setScanning(false);
+        push("scan", "Uplink failure — auxiliary brains declined handoff. Retry shortly, sir.");
       } finally {
         setBusy(false);
       }
     },
-    [busy, messages, send],
+    [busy, lines, model, push, send],
   );
 
-  const toggleMic = useCallback(() => {
-    const SR =
-      (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+  const toggleVoice = useCallback(() => {
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    const SR = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
+      | (new () => {
+          lang: string;
+          interimResults: boolean;
+          continuous: boolean;
+          onresult: (e: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void;
+          onend: () => void;
+          onerror: () => void;
+          start: () => void;
+          stop: () => void;
+        })
+      | undefined;
+
     if (!SR) {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: "Voice input is unsupported in this browser, sir. Kindly type instead.",
-        },
-      ]);
+      push("scan", "Voice nexus unsupported in this browser, sir. Kindly type instead.");
       return;
     }
     if (listening) {
       recogRef.current?.stop();
+      setListening(false);
       return;
     }
     const recog = new SR();
@@ -144,121 +194,261 @@ function Hud() {
     recog.lang = "en-US";
     recog.interimResults = true;
     recog.continuous = false;
-    recog.onresult = (e: any) => {
-      const transcript = Array.from(e.results)
-        .map((r: any) => r[0].transcript)
-        .join("");
+    recog.onresult = (e) => {
+      const results = Array.from(e.results);
+      const transcript = results.map((r) => r[0].transcript).join("");
       setInput(transcript);
-      if (e.results[e.results.length - 1].isFinal) void transmit(transcript);
+      if (results[results.length - 1]?.isFinal) void transmit(transcript);
     };
     recog.onend = () => setListening(false);
     recog.onerror = () => setListening(false);
     setListening(true);
+    push("system", "Hands-free voice nexus engaged // frequency rings active.");
     recog.start();
-  }, [listening, transmit]);
+  }, [listening, push, transmit]);
+
+  const activeLabel = NAV_ITEMS.find((n) => n.key === view)?.label ?? "Command Center Hub";
 
   return (
-    <main className="min-h-screen px-4 py-4 md:px-8 md:py-6">
-      <header className="hud-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span
-            className="h-2.5 w-2.5 rounded-full bg-hud-green"
-            style={{ animation: "hud-blink 1.2s steps(2) infinite", boxShadow: "0 0 10px var(--color-hud-green)" }}
-          />
-          <h1 className="hud-glow text-xs tracking-[0.3em] text-primary md:text-sm">
-            STARK INDUSTRIES // MARK LXXXV OS
-          </h1>
-        </div>
-        <div className="flex items-center gap-3 text-[10px] tracking-[0.25em] text-muted-foreground">
-          <span className="hidden md:inline">UTC</span>
-          <span className="hud-glow text-base text-accent tabular-nums">{clock}</span>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-nexus-stage lg:flex-row">
+      <Sidebar active={view} onSelect={setView} />
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-        <section className="hud-panel scanlines flex flex-col gap-4 p-4">
-          <div className="flex items-center justify-between text-[10px] tracking-[0.25em] text-muted-foreground">
-            <span>TELEMETRY</span>
-            <span className="text-primary">RTX-CORE</span>
-          </div>
-          <ArcReactor />
-          <div className="grid gap-2">
-            <MetricBar label="CPU LOAD" value={cpu} />
-            <MetricBar label="RAM USAGE" value={ram} />
-            <MetricBar label="REACTOR OUTPUT" value={pwr} />
-          </div>
-          <div className="border border-hud-green/40 bg-hud-green/5 px-3 py-2 text-center text-[11px] tracking-[0.3em] text-hud-green">
-            STATUS: ONLINE // SECURE
-          </div>
-        </section>
-
-        <section className="hud-panel scanlines flex min-h-[70vh] flex-col p-4 lg:min-h-[calc(100vh-9rem)]">
-          <div className="flex items-center justify-between text-[10px] tracking-[0.25em] text-muted-foreground">
-            <span>COMMS CHANNEL // ENCRYPTED</span>
-            <span className="text-accent">{busy ? "PROCESSING…" : "IDLE"}</span>
+      <main className="flex min-h-screen min-w-0 flex-1 flex-col p-3 md:p-5">
+        <header className="nexus-glass flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
+          <div className="flex items-baseline gap-3">
+            <span className="font-mono text-[10px] tracking-[0.25em] text-muted-foreground">UTC</span>
+            <span className="nexus-glow-text font-mono text-lg tabular-nums text-nexus-cyan">
+              {clock}
+            </span>
           </div>
 
-          <div ref={logRef} className="mt-3 flex-1 space-y-3 overflow-y-auto pr-2 text-sm leading-relaxed">
-            {messages.map((m, i) => (
-              <div key={i} className="whitespace-pre-wrap">
-                <span
-                  className={
-                    m.role === "user"
-                      ? "text-accent tracking-[0.2em]"
-                      : "hud-glow text-primary tracking-[0.2em]"
-                  }
-                >
-                  {m.role === "user" ? "USER >" : "J.A.R.V.I.S. >"}
-                </span>{" "}
-                <span className={m.role === "user" ? "text-foreground/85" : "text-foreground"}>
-                  {m.content}
-                </span>
-              </div>
-            ))}
-            {busy && (
-              <div className="text-primary/70">
-                J.A.R.V.I.S. &gt; <span style={{ animation: "hud-blink 1s infinite" }}>▊</span>
-              </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setModelOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-md border border-nexus-cyan/25 px-3 py-2 text-[11px] text-nexus-cyan transition-colors hover:bg-nexus-cyan/10"
+              >
+                {model}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {modelOpen && (
+                <div className="nexus-glass absolute right-0 z-20 mt-2 w-56 rounded-md p-1 [animation:nexus-fade-in_.18s_ease-out]">
+                  {MODELS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => {
+                        setModel(m);
+                        setModelOpen(false);
+                        push("system", `Brain router re-pointed to ${m}.`);
+                      }}
+                      className={`block w-full rounded px-3 py-2 text-left text-[11px] transition-colors hover:bg-nexus-cyan/10 ${
+                        m === model ? "text-nexus-cyan" : "text-muted-foreground"
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLockdown((l) => !l);
+                push(lockdown ? "success" : "scan", lockdown
+                  ? "Security lockdown released // channels reopened."
+                  : "SECURITY LOCKDOWN ENGAGED // outbound vectors sealed.");
+              }}
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] transition-all ${
+                lockdown
+                  ? "border-destructive/60 bg-destructive/15 text-destructive"
+                  : "border-nexus-green/40 text-nexus-green hover:bg-nexus-green/10"
+              }`}
+            >
+              {lockdown ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+              {lockdown ? "LOCKDOWN" : "SECURE"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSharing((s) => !s);
+                push("system", sharing ? "Screen share stream ended." : "Screen share stream broadcasting.");
+              }}
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] transition-all ${
+                sharing
+                  ? "border-nexus-violet/60 bg-nexus-violet/15 text-nexus-violet"
+                  : "border-nexus-cyan/25 text-muted-foreground hover:text-nexus-cyan"
+              }`}
+            >
+              {sharing ? <MonitorUp className="h-3.5 w-3.5" /> : <ShieldOff className="h-3.5 w-3.5" />}
+              SHARE
+            </button>
+          </div>
+        </header>
+
+        <div key={view} className="mt-4 flex min-h-0 flex-1 flex-col [animation:nexus-fade-in_.3s_ease-out]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium tracking-[0.14em] text-foreground/90">
+              {activeLabel.toUpperCase()}
+            </h2>
+            <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+              {busy ? "EXECUTING…" : "STANDBY"}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <TelemetryCard
+              label="NEURAL LOAD"
+              value={`${metrics.cpu.toFixed(1)}%`}
+              progress={metrics.cpu}
+              hint="Distributed across 6 brains"
+            />
+            <TelemetryCard
+              label="CONTEXT WINDOW"
+              value={`${metrics.ctx.toFixed(1)}%`}
+              progress={metrics.ctx}
+              tone="violet"
+              hint={`Primary: ${model}`}
+            />
+            <TelemetryCard
+              label="VECTOR SYNC"
+              value={`${metrics.vec.toFixed(1)}%`}
+              progress={metrics.vec}
+              tone="green"
+              hint="1.2M embeddings indexed"
+            />
+          </div>
+
+          <div className="mt-3 flex min-h-0 flex-1 flex-col">
+            {view === "hub" || view === "terminal" ? (
+              <TerminalScreen lines={lines} scanning={scanning} />
+            ) : (
+              <ModulePanel view={view} label={activeLabel} lines={lines} />
             )}
           </div>
 
-          <form
-            className="mt-4 flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void transmit(input);
-            }}
-          >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter command for J.A.R.V.I.S..."
-              className="h-11 flex-1 border border-border bg-black/60 px-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground/70 focus:border-primary focus:shadow-[0_0_18px_-4px_var(--color-hud-cyan)]"
-            />
-            <button
-              type="button"
-              onClick={toggleMic}
-              aria-label="Voice command"
-              className={`flex h-11 w-11 items-center justify-center border transition-colors ${
-                listening
-                  ? "border-destructive bg-destructive/20 text-destructive"
-                  : "border-border text-accent hover:border-accent hover:bg-accent/10"
-              }`}
-              style={listening ? { animation: "hud-pulse 1.2s ease-in-out infinite" } : undefined}
-            >
-              {listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </button>
-            <button
-              type="submit"
-              disabled={busy || !input.trim()}
-              className="flex h-11 items-center gap-2 border border-primary bg-primary/15 px-4 text-[11px] tracking-[0.25em] text-primary transition-all hover:bg-primary/25 hover:shadow-[0_0_20px_-4px_var(--color-hud-cyan)] disabled:opacity-40 disabled:hover:shadow-none"
-            >
-              <Send className="h-3.5 w-3.5" />
-              TRANSMIT
-            </button>
-          </form>
-        </section>
+          <BottomInputBar
+            value={input}
+            onChange={setInput}
+            onSubmit={() => void transmit(input)}
+            onToggleVoice={toggleVoice}
+            listening={listening}
+            busy={busy}
+          />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const MODULE_COPY: Record<string, { headline: string; rows: [string, string][] }> = {
+  voice: {
+    headline: "Hands-free wake-word pipeline with sub-200ms barge-in.",
+    rows: [
+      ["Wake phrase", "\"Jarvis, engage\""],
+      ["ASR engine", "Web Speech + local fallback"],
+      ["TTS voice", "en-GB neural butler"],
+      ["Barge-in latency", "184 ms"],
+    ],
+  },
+  audio: {
+    headline: "Media hub streaming decode, mixdown and stem separation.",
+    rows: [
+      ["Active streams", "3"],
+      ["Sample rate", "48 kHz / 24-bit"],
+      ["Stem separator", "idle"],
+      ["Loudness", "-14 LUFS"],
+    ],
+  },
+  enterprise: {
+    headline: "617 enterprise automations armed across the estate.",
+    rows: [
+      ["Automations", "617 armed"],
+      ["Queued jobs", "12"],
+      ["Failure rate 24h", "0.03%"],
+      ["Connectors", "84 live"],
+    ],
+  },
+  cad: {
+    headline: "Parametric CAD kernel with constraint solving on GPU.",
+    rows: [
+      ["Active assembly", "MK-XXIII gauntlet"],
+      ["Constraints", "1,482 solved"],
+      ["Tolerance", "0.02 mm"],
+      ["Mesh", "2.4M triangles"],
+    ],
+  },
+  bots: {
+    headline: "Discord and Telegram relays under one command bus.",
+    rows: [
+      ["Discord guilds", "27"],
+      ["Telegram chats", "141"],
+      ["Command bus", "healthy"],
+      ["Rate budget", "62% free"],
+    ],
+  },
+  sandbox: {
+    headline: "Sandboxed execution with zero-day heuristic auditing.",
+    rows: [
+      ["Sweeps today", "48"],
+      ["Quarantined", "3 syscalls"],
+      ["Escapes", "0"],
+      ["Audit trail", "signed"],
+    ],
+  },
+  vector: {
+    headline: "Six-brain vector tables kept coherent by MCP sync.",
+    rows: [
+      ["Embeddings", "1,204,882"],
+      ["Drift", "0.4%"],
+      ["Last reindex", "just now"],
+      ["Replicas", "6 / 6 healthy"],
+    ],
+  },
+};
+
+function ModulePanel({
+  view,
+  label,
+  lines,
+}: {
+  view: NavKey;
+  label: string;
+  lines: LogLine[];
+}) {
+  const copy = MODULE_COPY[view] ?? { headline: "Module online.", rows: [] };
+  return (
+    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+      <div className="nexus-glass rounded-lg p-4">
+        <p className="font-mono text-[10px] tracking-[0.22em] text-muted-foreground">
+          {label.toUpperCase()}
+        </p>
+        <p className="mt-2 text-sm text-foreground/90">{copy.headline}</p>
+        <dl className="mt-4 space-y-2 font-mono text-[11.5px]">
+          {copy.rows.map(([k, v]) => (
+            <div key={k} className="flex items-baseline justify-between border-b border-nexus-cyan/10 pb-1.5">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="text-nexus-cyan">{v}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-    </main>
+      <div className="nexus-glass flex min-h-[240px] flex-col overflow-hidden rounded-lg">
+        <p className="border-b border-nexus-cyan/15 px-4 py-2 font-mono text-[10px] tracking-[0.22em] text-muted-foreground">
+          MODULE STREAM
+        </p>
+        <div className="flex-1 space-y-1.5 overflow-y-auto p-4 font-mono text-[11.5px] text-muted-foreground">
+          {lines.slice(-24).map((l) => (
+            <p key={l.id} className="truncate">
+              <span className="text-muted-foreground/60">[{l.ts}]</span> {l.text}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
