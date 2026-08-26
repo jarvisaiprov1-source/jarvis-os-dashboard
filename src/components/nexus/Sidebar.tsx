@@ -44,7 +44,7 @@ export function Sidebar({
   return (
     <aside className="flex w-full shrink-0 flex-col border-r border-nexus-cyan/15 bg-nexus-void lg:w-[280px]">
       <div className="border-b border-nexus-cyan/15 px-5 py-5">
-        <h1 className="nexus-glow-text text-2xl font-semibold tracking-[0.18em] text-nexus-cyan">
+        <h1 className="nexus-glow-text font-sans text-2xl font-semibold tracking-[0.18em] text-nexus-cyan">
           J.A.R.V.I.S.
         </h1>
         <p className="mt-1 font-mono text-[10px] tracking-[0.22em] text-muted-foreground">
@@ -60,7 +60,7 @@ export function Sidebar({
               key={key}
               type="button"
               onClick={() => onSelect(key)}
-              className={`group relative flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13px] transition-all duration-200 ${
+              className={`group relative flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left font-sans text-[13px] transition-all duration-200 ${
                 isActive
                   ? "bg-nexus-cyan/10 text-nexus-cyan shadow-[0_0_22px_-10px_var(--color-nexus-cyan)]"
                   : "text-muted-foreground hover:bg-nexus-cyan/5 hover:text-nexus-cyan"
