@@ -50,6 +50,12 @@ const AMBIENT: { kind: LogKind; text: string }[] = [
   { kind: "system", text: "Enterprise suite: 617 automations idle and armed" },
 ];
 
+let logIdCounter = 2;
+function nextLogId() {
+  logIdCounter += 1;
+  return logIdCounter;
+}
+
 function stamp() {
   return new Date().toISOString().slice(11, 19);
 }
