@@ -103,8 +103,8 @@ function Nexus() {
 
 
   const push = useCallback((kind: LogKind, text: string) => {
-    idRef.current += 1;
-    setLines((prev) => [...prev.slice(-200), { id: 1000 + idRef.current, kind, text, ts: stamp() }]);
+    const id = nextLogId();
+    setLines((prev) => [...prev.slice(-200), { id, kind, text, ts: stamp() }]);
   }, []);
 
   useEffect(() => {
