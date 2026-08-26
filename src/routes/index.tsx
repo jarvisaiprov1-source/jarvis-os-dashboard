@@ -84,7 +84,7 @@ function Nexus() {
   const [listening, setListening] = useState(false);
   const [metrics, setMetrics] = useState({ cpu: 12.4, ctx: 68.2, vec: 91.5 });
 
-  const idRef = useRef(0);
+  
   const recogRef = useRef<{ stop: () => void } | null>(null);
   const [lines, setLines] = useState<LogLine[]>(() => [
     {
