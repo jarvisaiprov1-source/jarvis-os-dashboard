@@ -143,20 +143,48 @@ function Nexus() {
     return () => clearInterval(id);
   }, [push]);
 
+  const runGatewaySim = useCallback(
+    async (channel: "Discord" | "Telegram") => {
+      push("system", `GATEWAY [SIMULATED] > Connecting to ${channel} Bot API (mock session, no live token used)...`);
+      await new Promise((r) => setTimeout(r, 700));
+      push("scan", `GATEWAY [SIMULATED] > Negotiating handshake with ${channel} relay // dry-run mode.`);
+      await new Promise((r) => setTimeout(r, 700));
+      push("success", `GATEWAY [SIMULATED] > Outbound payload accepted by mock ${channel} endpoint. Nothing left this machine.`);
+      const reply = `Simulated ${channel} dispatch complete, sir — the payload never left the lab, since no live bot credentials are wired in yet. Say the word and I'll have you plugged into the real relay.`;
+      push("ai", reply);
+      speak(reply);
+    },
+    [push],
+  );
+
   const transmit = useCallback(
     async (raw: string) => {
       const text = raw.trim();
       if (!text || busy) return;
       setInput("");
       setBusy(true);
-      setScanning(true);
       push("user", text);
+
+      const lower = text.toLowerCase();
+      const wantsDispatch = /\b(message|dm|notify|ping|send|text)\b/.test(lower);
+      const channel = /discord/.test(lower) ? "Discord" : /telegram/.test(lower) ? "Telegram" : null;
+      if (wantsDispatch && channel) {
+        try {
+          await runGatewaySim(channel);
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
+
+      setScanning(true);
       push("scan", `Routing directive through ${model} // auxiliary fallbacks warm.`);
 
       const history = lines
         .filter((l) => l.kind === "user" || l.kind === "ai")
         .slice(-18)
         .map((l) => ({ role: l.kind === "user" ? ("user" as const) : ("assistant" as const), content: l.text }));
+
 
       try {
         const res = await send({ data: { messages: [...history, { role: "user", content: text }] } });
