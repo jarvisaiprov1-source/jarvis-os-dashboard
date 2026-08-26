@@ -110,9 +110,11 @@ function Nexus() {
   useEffect(() => {
     const tick = () => setClock(new Date().toISOString().slice(11, 19));
     tick();
+    setLines((prev) => prev.map((l) => (l.ts === "--:--:--" ? { ...l, ts: stamp() } : l)));
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
 
   useEffect(() => {
     const id = setInterval(() => {
