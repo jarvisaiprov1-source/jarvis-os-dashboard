@@ -91,15 +91,16 @@ function Nexus() {
       id: 0,
       kind: "system",
       text: "MARK-XXIII shell booted // Claude-Primary brain router online.",
-      ts: stamp(),
+      ts: "--:--:--",
     },
     {
       id: 1,
       kind: "success",
       text: "6-brain vector sync established. Awaiting directives, sir.",
-      ts: stamp(),
+      ts: "--:--:--",
     },
   ]);
+
 
   const push = useCallback((kind: LogKind, text: string) => {
     idRef.current += 1;
