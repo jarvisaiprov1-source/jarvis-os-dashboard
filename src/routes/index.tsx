@@ -50,6 +50,12 @@ const AMBIENT: { kind: LogKind; text: string }[] = [
   { kind: "system", text: "Enterprise suite: 617 automations idle and armed" },
 ];
 
+let logIdCounter = 2;
+function nextLogId() {
+  logIdCounter += 1;
+  return logIdCounter;
+}
+
 function stamp() {
   return new Date().toISOString().slice(11, 19);
 }
@@ -84,7 +90,7 @@ function Nexus() {
   const [listening, setListening] = useState(false);
   const [metrics, setMetrics] = useState({ cpu: 12.4, ctx: 68.2, vec: 91.5 });
 
-  const idRef = useRef(0);
+  
   const recogRef = useRef<{ stop: () => void } | null>(null);
   const [lines, setLines] = useState<LogLine[]>(() => [
     {
@@ -103,8 +109,8 @@ function Nexus() {
 
 
   const push = useCallback((kind: LogKind, text: string) => {
-    idRef.current += 1;
-    setLines((prev) => [...prev.slice(-200), { id: 1000 + idRef.current, kind, text, ts: stamp() }]);
+    const id = nextLogId();
+    setLines((prev) => [...prev.slice(-200), { id, kind, text, ts: stamp() }]);
   }, []);
 
   useEffect(() => {
